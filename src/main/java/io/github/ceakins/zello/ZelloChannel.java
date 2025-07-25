@@ -4,7 +4,11 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import io.github.ceakins.zello.internal.JsonUtils;
 import io.github.ceakins.zello.internal.ZelloMessageHandler;
 import io.github.ceakins.zello.internal.ZelloWebSocketClient;
+import io.github.ceakins.zello.internal.audio.AudioEngine;
+import io.github.ceakins.zello.model.commands.Command;
 import io.github.ceakins.zello.model.commands.LogonCommand;
+import io.github.ceakins.zello.model.commands.StartStreamCommand;
+import io.github.ceakins.zello.model.commands.StopStreamCommand;
 import io.github.ceakins.zello.model.events.*;
 import io.github.ceakins.zello.events.ZelloChannelListener;
 import org.slf4j.Logger;
@@ -26,6 +30,9 @@ public class ZelloChannel implements ZelloMessageHandler {
     private ZelloChannelListener listener;
     private ZelloWebSocketClient webSocketClient;
 
+    // --- NEW: AudioEngine instance ---
+    private final AudioEngine audioEngine;
+
     private final AtomicInteger sequence = new AtomicInteger(1);
     private volatile ConnectionState state = ConnectionState.DISCONNECTED;
 
@@ -36,6 +43,8 @@ public class ZelloChannel implements ZelloMessageHandler {
      */
     public ZelloChannel(ZelloChannelConfig config) {
         this.config = config;
+        // --- NEW: Initialize the AudioEngine ---
+        this.audioEngine = new AudioEngine();
     }
 
     /**
@@ -67,14 +76,61 @@ public class ZelloChannel implements ZelloMessageHandler {
     }
 
     /**
-     * Disconnects from the Zello channel.
+     * Disconnects from the Zello channel and releases resources.
      */
     public void disconnect() {
         if (webSocketClient != null) {
             state = ConnectionState.DISCONNECTING;
             webSocketClient.close();
         }
+        // --- NEW: Clean up the AudioEngine to prevent memory leaks ---
+        audioEngine.close();
     }
+
+    //region Public API for Sending Audio
+
+    /**
+     * Starts a voice stream to the channel.
+     * After calling this, you can begin sending audio data with {@link #sendVoiceData(byte[])}.
+     */
+    public void startVoiceStream() {
+        if (state != ConnectionState.CONNECTED) {
+            logger.warn("Cannot start voice stream while not connected.");
+            return;
+        }
+        logger.debug("Sending start_stream command...");
+        sendCommand(new StartStreamCommand());
+    }
+
+    /**
+     * Stops the current voice stream.
+     */
+    public void stopVoiceStream() {
+        if (state != ConnectionState.CONNECTED) {
+            return; // No need to stop if not connected
+        }
+        logger.debug("Sending stop_stream command...");
+        sendCommand(new StopStreamCommand());
+    }
+
+    /**
+     * Encodes a frame of raw PCM data and sends it to the channel.
+     * You must call {@link #startVoiceStream()} before using this method.
+     *
+     * @param pcmData A byte array of raw 16-bit, 16kHz, mono PCM audio.
+     *                The array size should match {@link io.github.ceakins.zello.internal.audio.AudioConstants#FRAME_SIZE_BYTES}.
+     */
+    public void sendVoiceData(byte[] pcmData) {
+        if (state != ConnectionState.CONNECTED) {
+            return; // Can't send data if not connected
+        }
+        byte[] opusData = audioEngine.encode(pcmData);
+        if (opusData != null && webSocketClient != null && webSocketClient.isOpen()) {
+            webSocketClient.send(opusData);
+        }
+    }
+
+    //endregion
 
     //region ZelloMessageHandler Implementation
 
@@ -82,64 +138,43 @@ public class ZelloChannel implements ZelloMessageHandler {
     public void onOpen() {
         logger.info("WebSocket connection established. Sending logon command...");
         state = ConnectionState.LOGGING_IN;
-
-        LogonCommand logon = new LogonCommand(config);
-        logon.setSequence(sequence.getAndIncrement());
-
-        try {
-            webSocketClient.send(JsonUtils.commandToJson(logon));
-        } catch (JsonProcessingException e) {
-            String errorMsg = "Failed to serialize logon command";
-            logger.error(errorMsg, e);
-            onError(errorMsg, e);
-            disconnect();
-        }
+        sendCommand(new LogonCommand(config));
     }
 
     @Override
     public void onServerCommand(ServerCommand command) {
-        // Use pattern matching for modern, clean type checking
         if (command instanceof LogonResultEvent event) {
             if (!event.isSuccess()) {
                 logger.error("Logon failed: {}", event.getError());
-                if (listener != null) {
-                    listener.onError("Logon failed: " + event.getError(), null);
-                }
+                if (listener != null) listener.onError("Logon failed: " + event.getError(), null);
                 disconnect();
             }
         } else if (command instanceof OnChannelStatusEvent event) {
             if ("online".equals(event.getStatus())) {
                 logger.info("Logon successful. Channel is online.");
                 state = ConnectionState.CONNECTED;
-                if (listener != null) {
-                    listener.onConnected();
-                }
+                if (listener != null) listener.onConnected();
             }
         } else if (command instanceof OnTextMessageEvent event) {
-            if (listener != null) {
-                listener.onTextMessage(event.getFrom(), event.getMessage());
-            }
+            if (listener != null) listener.onTextMessage(event.getFrom(), event.getMessage());
         } else if (command instanceof OnStreamStartEvent event) {
-            // TODO: Initialize decoder in AudioEngine for this stream
-            if (listener != null) {
-                listener.onStreamStarted(event.getStreamId(), event.getFrom());
-            }
+            // --- IMPLEMENTED ---
+            audioEngine.startDecodingSession(event.getStreamId());
+            if (listener != null) listener.onStreamStarted(event.getStreamId(), event.getFrom());
         } else if (command instanceof OnStreamStopEvent event) {
-            // TODO: Tear down decoder in AudioEngine for this stream
-            if (listener != null) {
-                listener.onStreamStopped(event.getStreamId(), event.getFrom());
-            }
+            // --- IMPLEMENTED ---
+            audioEngine.stopDecodingSession(event.getStreamId());
+            if (listener != null) listener.onStreamStopped(event.getStreamId(), event.getFrom());
         }
     }
 
     @Override
     public void onAudioPacket(int streamId, byte[] audioData) {
-        // TODO: Pass audioData to AudioEngine to be decoded, then forward PCM to listener
-        logger.debug("Received audio packet for stream {}. Placeholder for decoding.", streamId);
-        // byte[] pcmData = audioEngine.decode(streamId, audioData);
-        // if (listener != null && pcmData != null) {
-        //     listener.onAudioData(streamId, pcmData);
-        // }
+        // --- IMPLEMENTED ---
+        byte[] pcmData = audioEngine.decode(streamId, audioData);
+        if (listener != null && pcmData != null) {
+            listener.onAudioData(streamId, pcmData);
+        }
     }
 
     @Override
@@ -158,5 +193,21 @@ public class ZelloChannel implements ZelloMessageHandler {
     }
 
     //endregion
+
+    // --- NEW: Helper method to send commands ---
+    private void sendCommand(Command command) {
+        if (webSocketClient == null || !webSocketClient.isOpen()) {
+            logger.error("Cannot send command while websocket is closed.");
+            return;
+        }
+        command.setSequence(sequence.getAndIncrement());
+        try {
+            webSocketClient.send(JsonUtils.commandToJson(command));
+        } catch (JsonProcessingException e) {
+            String errorMsg = "Failed to serialize command: " + command.getCommand();
+            logger.error(errorMsg, e);
+            onError(errorMsg, e);
+        }
+    }
 
 }
