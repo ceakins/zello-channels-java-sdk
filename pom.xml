@@ -22,6 +22,7 @@
         <lombok.version>1.18.38</lombok.version>
         <java-websocket.version>1.5.6</java-websocket.version>
         <json.version>20240303</json.version>
+        <jackson.version>2.17.1</jackson.version> <!-- Jackson Dependency -->
         <lwjgl.version>3.3.4</lwjgl.version>
         <slf4j.version>2.0.13</slf4j.version>
         <logback.version>1.5.6</logback.version>
@@ -65,6 +66,12 @@
             <version>${json.version}</version>
         </dependency>
         <dependency>
+            <!-- Jackson for robust POJO to JSON serialization -->
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+            <version>${jackson.version}</version>
+        </dependency>
+        <dependency>
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-api</artifactId>
             <version>${slf4j.version}</version>
@@ -80,7 +87,7 @@
             <artifactId>lwjgl-opus</artifactId>
         </dependency>
 
-        <!-- LWJGL Native Libraries for different Operating Systems -->
+        <!-- LWJGL Native Libraries -->
         <dependency>
             <groupId>org.lwjgl</groupId>
             <artifactId>lwjgl</artifactId>
