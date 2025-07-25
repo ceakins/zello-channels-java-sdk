@@ -1,12 +1,11 @@
-
 # Zello Channels Java SDK
 
 [![Java Version](https://img.shields.io/badge/Java-21-blue.svg)](https://www.oracle.com/java/technologies/javase/21-relnote-issues.html)
-[![Build Status](https://github.com/ceakins/zello-channels-java-sdk/actions/workflows/maven.yml/badge.svg)](https://github.com/YOUR_USERNAME/zello-channels-java-sdk/actions)
-[![Maven Central](https://img.shields.io/maven-central/v/com.charles.eakins/zello-channels-java-sdk.svg?label=Maven%20Central)](https://search.maven.org/search?q=g:com.charles.eakins%20AND%20a:zello-channels-java-sdk)
+[![Build Status](https://github.com/ceakins/zello-channels-java-sdk/actions/workflows/maven.yml/badge.svg)](https://github.com/ceakins/zello-channels-java-sdk/actions)
+[![Maven Central](https://img.shields.io/maven-central/v/io.github.ceakins/zello-channels-java-sdk.svg?label=Maven%20Central)](https://search.maven.org/search?q=g:io.github.ceakins%20AND%20a:zello-channels-java-sdk)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
-A modern, high-performance Java SDK for the [Zello Channels API](https://github.com/zelloptt/zello-channel-api/blob/master/API.md). This library provides a robust, pure Java solution for integrating with both Zello and ZelloWork channels, making it ideal for building custom clients, bots, and audio bridges (e.g., between a physical radio and a Zello channel).
+A modern, high-performance Java SDK for the [Zello Channels API](https://github.com/zelloptt/zello-channel-api/blob/master/API.md). This library provides a robust solution for integrating with both Zello and ZelloWork channels, making it ideal for building custom clients, bots, and audio bridges (e.g., between a physical radio and a Zello channel).
 
 This SDK is built on **Java 21** and leverages modern libraries to provide a clean and efficient developer experience.
 
@@ -32,7 +31,7 @@ This package will be available on Maven Central. To add it to your project, incl
 
 ```xml
 <dependency>
-    <groupId>com.charles.eakins</groupId>
+    <groupId>io.github.ceakins</groupId>
     <artifactId>zello-channels-java-sdk</artifactId>
     <version>1.0.0</version> <!-- Replace with the latest version from Maven Central -->
 </dependency>
@@ -43,11 +42,12 @@ This package will be available on Maven Central. To add it to your project, incl
 Here is a simple example of how to connect to a channel and listen for events.
 
 ```java
-package com.charles.eakins.examples;
+// Note the updated package name
+package io.github.ceakins.zello.examples;
 
-import com.charles.eakins.zello.sdk.ZelloChannel;
-import com.charles.eakins.zello.sdk.ZelloChannelConfig;
-import com.charles.eakins.zello.sdk.events.ZelloChannelListener;
+import io.github.ceakins.zello.ZelloChannel;
+import io.github.ceakins.zello.ZelloChannelConfig;
+import io.github.ceakins.zello.events.ZelloChannelListener;
 
 public class MyZelloBot {
 
@@ -88,7 +88,6 @@ public class MyZelloBot {
             @Override
             public void onStreamStarted(int streamId, String from) {
                 System.out.println("Incoming voice stream started from " + from);
-                // The SDK automatically handles decoding and playing the audio.
             }
             
             @Override
@@ -105,7 +104,6 @@ public class MyZelloBot {
         }
 
         // Keep the application running
-        // In a real application, you would manage the lifecycle differently.
         Runtime.getRuntime().addShutdownHook(new Thread(channel::disconnect));
     }
 }
@@ -129,11 +127,12 @@ To build the project yourself, clone the repository and run the Maven `install` 
 
 ```bash
 # Clone the repository
-git clone https://github.com/YOUR_USERNAME/zello-channels-java-sdk.git
+git clone https://github.com/ceakins/zello-channels-java-sdk.git
 cd zello-channels-java-sdk
 
 # Build the project and run tests
-mvn clean install```
+mvn clean install
+```
 
 The compiled JAR file will be located in the `target` directory.
 
@@ -150,3 +149,4 @@ Contributions are welcome! If you have a feature request, bug report, or pull re
 ## License
 
 This project is licensed under the Apache License, Version 2.0. See the `LICENSE` file for details.
+```

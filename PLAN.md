@@ -1,102 +1,95 @@
-# Zello Java SDK Project Plan
+# Zello Channels Java SDK - Final Project Plan
 
-### I. Zello SDK for Java (Targeting Java 21)
+## I. Zello SDK for Java
 
-This SDK will provide a modern, pure Java, standalone solution for integrating with Zello and ZelloWork channels. By targeting **Java 21**, it will leverage the latest language features and performance enhancements. It will support custom PTT, Vox, and external audio sources, making it ideal for radio-to-Zello audio bridging applications.
+This SDK will provide a modern, high-performance Java solution for integrating with the Zello Channels API, supporting both Zello and ZelloWork channels.
 
-#### 1. Core Concepts
+### 1. Core Concepts
+- **Targeting Java 21:** The SDK will be built and compiled using JDK 21 to leverage the latest language features and performance enhancements.
+- **WebSocket Communication:** All commands and data are transmitted over a secure WebSocket connection to the Zello server.
+- **Event-Driven Architecture:** A listener-based model will be used to notify the client application of channel events (e.g., incoming audio, text messages, user status).
+- **Opus Audio Requirement:** All voice communication must be encoded and decoded using the Opus audio codec as required by the Zello API.
 
-The SDK will be built around the following core concepts:
+### 2. Key Features
+- **Reliable Opus Codec via LWJGL:** The project will use the industry-standard **Lightweight Java Game Library (LWJGL) 3** bindings for Opus. While this involves native libraries, LWJGL's Maven integration handles their management automatically, ensuring robust and high-performance audio processing across Windows, macOS, and Linux.
+- **Reduced Boilerplate with Lombok:** **Project Lombok** will be used to generate getters, setters, constructors, and builders, keeping model classes clean and concise.
+- **Fluent Builder Pattern:** The main `ZelloChannel` configuration will be constructed via a fluent **Builder design pattern** (`ZelloChannelConfig.builder()`), providing a readable and extensible API.
+- **Flexible Logging with SLF4J:** The SDK will use the **SLF4J API**, allowing the end-user to choose their own logging implementation (e.g., Logback, Log4j2).
+- **Custom Audio Control:** The SDK will provide clear methods for starting and stopping audio transmission, enabling custom Push-to-Talk (PTT) and Voice Activity Detection (VOX) implementations.
 
-*   **WebSocket Communication:** All communication with the Zello server is handled over a secure WebSocket connection.
-*   **JSON Control Protocol:** Commands and events are sent and received as JSON-formatted text messages.
-*   **Binary Audio Streaming:** Voice data is sent and received as binary messages using the Opus codec.
-*   **Event-Driven Architecture:** The SDK will use an event-driven model to notify the application of events such as incoming voice messages, channel status changes, and errors.
+---
 
-#### 2. Key Features
+## II. High-Level Architecture
 
-*   **Built for Java 21:** The SDK will be developed and compiled using Java 21 to take advantage of the latest features, including virtual threads (Project Loom) for highly concurrent I/O operations.
-*   **Reduced Boilerplate with Lombok:** **Project Lombok** will be used to automatically generate getters, setters, constructors, `toString()`, `equals()`, and `hashCode()` methods, keeping the model and data classes clean and concise.
-*   **Builder Pattern for Object Creation:** Complex objects, such as the main `ZelloChannel` configuration, will be constructed using the **Builder design pattern**, powered by Lombok's `@Builder` annotation. This provides a fluent, readable, and extensible API for object instantiation.
-*   **Zello and ZelloWork Support:** The SDK will support connecting to both Zello and ZelloWork channels.
-*   **Opus Codec Integration:** The SDK will include a pure Java Opus library to handle audio encoding and decoding.
-*   **Custom PTT and Vox:** The SDK will provide methods to start and stop audio streaming.
-*   **Configurable Audio I/O:** Audio input and output devices can be configured through a properties file.
-*   **Real-time Audio Management:** The SDK will incorporate buffering and low-latency processing.
-*   **No Native Libraries:** The SDK will be a pure Java solution.
-*   **Flexible Logging:** The SDK will use the **SLF4J API** for logging.
+### 1. Package Structure
+All SDK classes will reside under the base package `io.github.ceakins.zello`, which aligns with modern Maven Central publishing conventions.
+- **Example:** `io.github.ceakins.zello.ZelloChannel`
+- **Example:** `io.github.ceakins.zello.events.ZelloChannelListener`
 
-#### 3. High-Level Architecture
+### 2. Main Components
+- **`ZelloChannelConfig`:** A data class (using Lombok's `@Builder`) to hold all configuration parameters like username, password, channel name, and server URL.
+- **`ZelloChannel`:** The primary class for managing the WebSocket connection, handling authentication, and providing public methods for interaction (e.g., `connect()`, `disconnect()`, `sendTextMessage()`).
+- **`ZelloChannelListener`:** An interface the client application will implement to receive callbacks for events like `onConnected`, `onTextMessage`, and `onStreamStarted`.
+- **`AudioEngine`:** An internal component responsible for using the LWJGL Opus bindings to encode and decode all audio streams.
+- **Data Models:** A series of plain old Java objects (POJOs) using Lombok to represent the JSON commands and events defined in the Zello API documentation.
 
-The SDK will consist of the following main components:
+---
 
-*   **Package Structure:** All classes and resources for the SDK will reside under the base package `com.charles.eakins`. For example: `com.charles.eakins.zello.sdk.ZelloChannel`.
-*   **`ZelloChannel`:** The main class for interacting with a Zello channel. Its setup and configuration will be managed via a builder.
-*   **`ZelloChannelListener`:** An interface that the application can implement to receive events.
-*   **Data Objects:** Models for JSON commands and events (e.g., `Auth`, `OnStreamStart`, `OnTextMessage`) will be plain old Java objects (POJOs) with boilerplate code generated by Lombok annotations.
-*   **`AudioEngine`:** A component responsible for audio handling.
-*   **`Configuration`:** A class for loading and managing configuration settings.
+## III. Maven Build Files (`pom.xml`)
 
-### II. Maven Build Files
+### 1. Maven Coordinates
+The project will be identified with the following coordinates:
+- **groupId:** `io.github.ceakins`
+- **artifactId:** `zello-channels-java-sdk`
+- **version:** `1.0.0-SNAPSHOT`
 
-A `pom.xml` file will be created to manage the project's coordinates, dependencies, build process, and packaging.
+### 2. Core Dependencies
+- `org.projectlombok:lombok`
+- `org.java-websocket:Java-WebSocket`
+- `org.json:json`
+- `org.slf4j:slf4j-api`
+- `org.lwjgl:lwjgl-bom` (Bill of Materials to manage all LWJGL versions)
+- `org.lwjgl:lwjgl`
+- `org.lwjgl:lwjgl-opus` (along with native classifiers for Windows, Linux, and macOS)
 
-#### 1. Maven Coordinates
+### 3. Testing Dependencies
+- `org.testng:testng`
+- `org.mockito:mockito-core`
+- `ch.qos.logback:logback-classic`
 
-The project will be identified with the following Maven coordinates in the `pom.xml`:
+### 4. Build Plugins
+- **`maven-compiler-plugin`:** Configured for Java 21 and integration with Lombok's annotation processor.
+- **`maven-surefire-plugin`:** Configured to run the TestNG test suite.
+- **`maven-jar-plugin`:** To package the core library.
+- **`maven-source-plugin`:** To package the source code for distribution.
+- **`maven-javadoc-plugin`:** To generate API documentation.
+- **`maven-assembly-plugin`:** To create a standalone JAR with all dependencies for specific applications.
 
-```xml
-<groupId>com.charles.eakins</groupId>
-<artifactId>zello-channel-sdk</artifactId>
-<version>1.0.0-SNAPSHOT</version>
+---
+
+## IV. Testing Strategy
+- The project will use **TestNG** as its primary testing framework.
+- **Unit Tests:** Will cover individual classes and methods in isolation, using **Mockito** to mock dependencies.
+- **Integration Tests:** Will be developed to test the full connection lifecycle by connecting to a live Zello channel, verifying authentication, and testing message/audio transmission. TestNG's suite XML files will be used to manage these tests.
+
+---
+
+## V. GitHub and Deployment
+### 1. Repository
+- **Name:** `zello-channels-java-sdk`
+- **License:** **Apache License 2.0**. A `LICENSE` file will be included in the repository root.
+- **`README.md`:** A comprehensive README will serve as the project's front page, detailing features, installation instructions, and a quick-start guide.
+
+### 2. Build Automation
+- A **GitHub Actions** workflow will be created to:
+  - Trigger on pushes and pull requests to the `main` branch.
+  - Set up a **JDK 21** environment.
+  - Build the project using Maven (`mvn clean install`).
+  - Run the TestNG test suite.
+
+### 3. Maven Central Deployment
+- **Prerequisites:**
+  - A Sonatype (OSSRH) JIRA account will be needed to request publishing rights for the `io.github.ceakins` groupId.
+  - A GPG key will be generated and used to sign the artifacts.
+- **Process:** The GitHub Actions workflow will be extended to automate deployment to Maven Central upon the creation of a new release tag on GitHub. Secure credentials (Sonatype tokens, GPG keys) will be stored in GitHub Secrets.
 ```
-
-#### 2. Dependencies
-
-The `pom.xml` will include the following dependencies:
-
-*   **Project Lombok (`lombok`):** To reduce boilerplate code, with a `provided` scope.
-*   **Java-WebSocket:** For WebSocket communication.
-*   **JSON-java:** For parsing and creating JSON messages.
-*   **JOpus:** A pure Java implementation of the Opus codec.
-*   **SLF4J API (`slf4j-api`):** To provide a logging facade.
-*   **TestNG:** For unit and integration testing.
-*   **Mockito:** For mocking objects in tests.
-*   **Logback (`logback-classic`):** To be used in the `test` scope.
-
-#### 3. Build Plugins
-
-The `pom.xml` will be configured with the following Maven plugins:
-
-*   **`maven-compiler-plugin`:** Configured to use **Java 21** and integrate with **Lombok**.
-*   **`maven-surefire-plugin`:** To run the TestNG tests.
-*   **`maven-jar-plugin`:** To package the SDK as a standard JAR file.
-*   **`maven-assembly-plugin`:** To create a standalone JAR file with all dependencies.
-*   **`maven-source-plugin`:** To package the source code for distribution.
-*   **`maven-javadoc-plugin`:** To generate Javadoc documentation.
-
-### III. Testing
-
-A comprehensive test suite will be developed using **TestNG** to ensure quality. All test classes will also reside under the `com.charles.eakins` package structure.
-
-#### 1. Unit Tests
-
-Unit tests will be created for each component of the SDK, using TestNG assertions and Mockito to isolate and test individual units of code.
-
-#### 2. Integration Tests
-
-Integration tests will be developed to test the end-to-end functionality of the SDK by connecting to a live Zello channel.
-
-### IV. GitHub Build and Maven Central Deployment
-
-#### 1. GitHub Actions Workflow
-
-A GitHub Actions workflow will be created to automate the build, test, and deployment process using a **JDK 21** environment.
-
-#### 2. Maven Central Deployment
-
-1.  **Create a Sonatype JIRA Account:** To request permission to publish artifacts under the `com.charles.eakins` group ID. You will need to prove ownership of a domain associated with it (like `eakins.charles.com`) or use a public repository like GitHub.
-2.  **Configure GPG Signing:** To sign the artifacts before deploying.
-3.  **Configure `pom.xml` for Deployment:** To add SCM, license, and developer information.
-4.  **Configure GitHub Secrets:** To securely store the Sonatype credentials and GPG passphrase.
-5.  **Create a Release on GitHub:** To trigger the deployment workflow.
