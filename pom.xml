@@ -10,8 +10,32 @@
     <version>1.0.0-SNAPSHOT</version>
     <packaging>jar</packaging>
 
+    <!-- Project Metadata for Maven Central -->
     <name>Zello Channels Java SDK</name>
     <description>A Java SDK for the Zello Channels API to support Zello and ZelloWork channels.</description>
+    <url>https://github.com/ceakins/zello-channels-java-sdk</url>
+
+    <licenses>
+        <license>
+            <name>The Apache License, Version 2.0</name>
+            <url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
+        </license>
+    </licenses>
+
+    <developers>
+        <developer>
+            <name>Charles Eakins</name>
+            <email>charles.eakins@protonmail.com</email>
+            <organization>io.github.ceakins</organization>
+            <organizationUrl>https://github.com/ceakins</organizationUrl>
+        </developer>
+    </developers>
+
+    <scm>
+        <connection>scm:git:git://github.com/ceakins/zello-channels-java-sdk.git</connection>
+        <developerConnection>scm:git:ssh://github.com:ceakins/zello-channels-java-sdk.git</developerConnection>
+        <url>https://github.com/ceakins/zello-channels-java-sdk/tree/main</url>
+    </scm>
 
     <properties>
         <!-- Build Properties -->
@@ -19,10 +43,10 @@
         <maven.compiler.release>21</maven.compiler.release>
 
         <!-- Dependency Versions -->
-        <lombok.version>1.18.38</lombok.version>
-        <java-websocket.version>1.5.6</java-websocket.version>
+        <lombok.version>1.18.32</lombok.version>
+        <java-websocket.version>1.5.7</java-websocket.version>
         <json.version>20240303</json.version>
-        <jackson.version>2.17.1</jackson.version> <!-- Jackson Dependency -->
+        <jackson.version>2.17.1</jackson.version>
         <lwjgl.version>3.3.4</lwjgl.version>
         <slf4j.version>2.0.13</slf4j.version>
         <logback.version>1.5.6</logback.version>
@@ -32,9 +56,10 @@
         <!-- Plugin Versions -->
         <maven-compiler-plugin.version>3.13.0</maven-compiler-plugin.version>
         <maven-surefire-plugin.version>3.2.5</maven-surefire-plugin.version>
+        <maven-source-plugin.version>3.3.1</maven-source-plugin.version>
+        <maven-javadoc-plugin.version>3.7.0</maven-javadoc-plugin.version>
     </properties>
 
-    <!-- This Bill of Materials (BOM) manages all LWJGL module versions -->
     <dependencyManagement>
         <dependencies>
             <dependency>
@@ -66,7 +91,6 @@
             <version>${json.version}</version>
         </dependency>
         <dependency>
-            <!-- Jackson for robust POJO to JSON serialization -->
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-databind</artifactId>
             <version>${jackson.version}</version>
@@ -77,7 +101,7 @@
             <version>${slf4j.version}</version>
         </dependency>
 
-        <!-- LWJGL Dependencies -->
+        <!-- LWJGL Dependencies for Opus Codec -->
         <dependency>
             <groupId>org.lwjgl</groupId>
             <artifactId>lwjgl</artifactId>
@@ -86,8 +110,6 @@
             <groupId>org.lwjgl</groupId>
             <artifactId>lwjgl-opus</artifactId>
         </dependency>
-
-        <!-- LWJGL Native Libraries -->
         <dependency>
             <groupId>org.lwjgl</groupId>
             <artifactId>lwjgl</artifactId>
@@ -142,7 +164,7 @@
             <groupId>ch.qos.logback</groupId>
             <artifactId>logback-classic</artifactId>
             <version>${logback.version}</version>
-            <scope>test</scope>
+            <scope>runtime</scope>
         </dependency>
     </dependencies>
 
@@ -167,6 +189,41 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <version>${maven-surefire-plugin.version}</version>
+                <configuration>
+                    <forkCount>0</forkCount>
+                    <systemPropertyVariables>
+                        <zello.serverUrl>${env.ZELLO_SERVER_URL}</zello.serverUrl>
+                        <zello.username>${env.ZELLO_USERNAME}</zello.username>
+                        <zello.password>${env.ZELLO_PASSWORD}</zello.password>
+                        <zello.channel>${env.ZELLO_CHANNEL}</zello.channel>
+                    </systemPropertyVariables>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-source-plugin</artifactId>
+                <version>${maven-source-plugin.version}</version>
+                <executions>
+                    <execution>
+                        <id>attach-sources</id>
+                        <goals>
+                            <goal>jar-no-fork</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-javadoc-plugin</artifactId>
+                <version>${maven-javadoc-plugin.version}</version>
+                <executions>
+                    <execution>
+                        <id>attach-javadocs</id>
+                        <goals>
+                            <goal>jar</goal>
+                        </goals>
+                    </execution>
+                </executions>
             </plugin>
         </plugins>
     </build>
