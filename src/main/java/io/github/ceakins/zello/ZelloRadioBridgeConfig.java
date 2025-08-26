@@ -4,33 +4,38 @@ import lombok.Builder;
 import lombok.Getter;
 
 /**
- * Configuration for the ZelloRadioBridge.
- * Use the builder to construct a configuration object with custom VOX settings.
+ * Configuration for the ZelloRadioBridge, allowing customization of VOX parameters.
  */
 @Getter
 @Builder
 public class ZelloRadioBridgeConfig {
 
     /**
-     * The RMS audio level (0.0 to 1.0) required to trigger the start of a transmission.
-     * Lower values are more sensitive. A typical value is between 0.02 and 0.1.
+     * The RMS audio level required to trigger VOX. Range is 0-1.0.
+     * A good starting point is 0.05. Lower values are more sensitive.
      */
     @Builder.Default
-    private final double voxOpenThreshold = 0.05;
+    private double voxOpenThreshold = 0.05;
 
     /**
-     * The RMS audio level (0.0 to 1.0) below which the audio is considered silence.
-     * This should be slightly lower than the open threshold to prevent the stream from flapping
-     * on and off with background noise.
+     * The RMS audio level required to close the VOX gate. Should be slightly lower than open to prevent flapping.
      */
     @Builder.Default
-    private final double voxCloseThreshold = 0.03;
+    private double voxCloseThreshold = 0.03;
 
     /**
-     * The duration in milliseconds of silence to wait after the last sound before closing the stream.
-     * This prevents the stream from cutting out between words or during short pauses.
+     * How long (in milliseconds) of silence to wait before closing the stream.
+     * This prevents the stream from cutting out between words.
      */
     @Builder.Default
-    private final long voxHangTimeMs = 1000;
+    private long voxHangTimeMs = 10000;
+
+    /**
+     * The number of audio frames to buffer before the VOX gate opens.
+     * This ensures the beginning of speech is not clipped.
+     * Example: 10 frames * 20ms/frame = 200ms of pre-roll audio.
+     */
+    @Builder.Default
+    private int preRollFrameCount = 10;
 
 }
