@@ -3,6 +3,7 @@ package io.github.ceakins.zello;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import io.github.ceakins.zello.events.ZelloChannelListener;
 import io.github.ceakins.zello.internal.JsonUtils;
+import io.github.ceakins.zello.internal.WebSocketClientFactory;
 import io.github.ceakins.zello.internal.ZelloMessageHandler;
 import io.github.ceakins.zello.internal.ZelloWebSocketClient;
 import io.github.ceakins.zello.internal.audio.AudioEngine;
@@ -34,7 +35,7 @@ public class ZelloChannel implements ZelloMessageHandler {
 
     private static final Logger logger = LoggerFactory.getLogger(ZelloChannel.class);
     private static final String USER_AGENT = "zello-channels-java-sdk/1.0.0";
-    private static final int MAX_IMAGE_PACKET_SIZE = 16384; // 16KB chunk size for images
+    private static final int MAX_IMAGE_PACKET_SIZE = 16384;
 
     @Getter
     @AllArgsConstructor
@@ -49,16 +50,35 @@ public class ZelloChannel implements ZelloMessageHandler {
 
     private final ZelloChannelConfig config;
     private ZelloChannelListener listener;
-    private ZelloWebSocketClient webSocketClient;
     private final AudioEngine audioEngine;
+    private ZelloWebSocketClient webSocketClient;
     private final AtomicInteger sequence = new AtomicInteger(1);
     private volatile ConnectionState state = ConnectionState.DISCONNECTED;
     private volatile int outgoingStreamId = -1;
     private volatile int outgoingPacketId = 0;
 
+    private final WebSocketClientFactory webSocketClientFactory;
+
+    /**
+     * Constructs a new ZelloChannel with the specified configuration for production use.
+     *
+     * @param config The non-null configuration object containing all connection details.
+     */
     public ZelloChannel(ZelloChannelConfig config) {
+        this(config, new AudioEngine(), ZelloWebSocketClient::new);
+    }
+
+    /**
+     * Internal constructor for dependency injection, allowing for testing with mocks.
+     *
+     * @param config The configuration object.
+     * @param audioEngine The audio engine to use (can be a mock).
+     * @param webSocketClientFactory A factory to produce the WebSocket client (can be a mock factory).
+     */
+    ZelloChannel(ZelloChannelConfig config, AudioEngine audioEngine, WebSocketClientFactory webSocketClientFactory) {
         this.config = config;
-        this.audioEngine = new AudioEngine();
+        this.audioEngine = audioEngine;
+        this.webSocketClientFactory = webSocketClientFactory;
     }
 
     public void setListener(ZelloChannelListener listener) {
@@ -81,8 +101,9 @@ public class ZelloChannel implements ZelloMessageHandler {
         logger.debug("--- WebSocket Handshake Request ---");
         headers.forEach((key, value) -> logger.debug("Header: {} = {}", key, value));
         logger.debug("-----------------------------------");
-        webSocketClient = new ZelloWebSocketClient(new URI(config.getServerUrl()), headers, this);
-        webSocketClient.connect();
+
+        this.webSocketClient = webSocketClientFactory.create(new URI(config.getServerUrl()), headers, this);
+        this.webSocketClient.connect();
     }
 
     public void disconnect() {
@@ -179,12 +200,10 @@ public class ZelloChannel implements ZelloMessageHandler {
     public void onServerResponse(JSONObject response) {
         logger.debug("Received server response: {}", response);
         int seq = response.optInt("seq", -1);
-
         if (seq != -1 && commandCallbacks.containsKey(seq)) {
             commandCallbacks.remove(seq).accept(response);
             return;
         }
-
         boolean isError = response.has("error") || (response.has("success") && !response.getBoolean("success"));
         if (isError) {
             String error = response.optString("error", "An unknown error occurred.");
@@ -284,13 +303,10 @@ public class ZelloChannel implements ZelloMessageHandler {
 
     private void sendBinaryImageData(int imageId, byte[] thumbnailData, byte[] fullImageData) {
         if (webSocketClient == null || !webSocketClient.isOpen()) return;
-
         final int IMAGE_TYPE_FULL = 0x01;
         final int IMAGE_TYPE_THUMBNAIL = 0x02;
-
         logger.debug("Sending thumbnail ({} bytes) for imageId {}", thumbnailData.length, imageId);
         webSocketClient.send(createImagePacket(imageId, IMAGE_TYPE_THUMBNAIL, thumbnailData));
-
         logger.debug("Sending full image ({} bytes) for imageId {}", fullImageData.length, imageId);
         webSocketClient.send(createImagePacket(imageId, IMAGE_TYPE_FULL, fullImageData));
     }

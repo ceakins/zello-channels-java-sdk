@@ -1,0 +1,62 @@
+# .github/workflows/release.yml
+
+name: Publish to Maven Central and Create GitHub Release
+
+on:
+  push:
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+*'
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    steps:
+      # === Step 1: Setup Environment ===
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          # NOTE: We have REMOVED the server-username and server-password from this step.
+
+      - name: Import GPG key
+        uses: crazy-max/ghaction-import-gpg@v6
+        with:
+          gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
+          passphrase: ${{ secrets.GPG_PASSPHRASE }}
+
+      # === Step 2: Manually Create settings.xml ===
+      # This is the new, critical step. We build the settings file ourselves.
+      - name: Create settings.xml
+        run: |
+          mkdir -p ~/.m2
+          echo "<settings xmlns='http://maven.apache.org/SETTINGS/1.0.0' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' xsi:schemaLocation='http://maven.apache.org/SETTINGS/1.0.0 https://maven.apache.org/xsd/settings-1.0.0.xsd'>
+                  <servers>
+                    <server>
+                      <id>ossrh</id>
+                      <username>${{ secrets.OSSRH_USERNAME }}</username>
+                      <password>${{ secrets.OSSRH_TOKEN }}</password>
+                    </server>
+                  </servers>
+                </settings>" > ~/.m2/settings.xml
+
+      # === Step 3: Build and Deploy to Maven Central ===
+      - name: Build and Deploy to Maven Central
+        run: mvn -B -P release deploy
+
+      # === Step 5: Create the GitHub Release and Upload All Artifacts ===
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            target/zello-channels-java-sdk.jar
+            target/zello-channels-java-sdk-javadoc.jar
+            target/zello-channels-java-sdk-sources.jar
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

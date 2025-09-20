@@ -1,0 +1,36 @@
+name: Java CI Build
+
+# Controls when the workflow will run
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build:
+    # The type of runner that the job will run on
+    runs-on: ubuntu-latest
+
+    steps:
+      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Sets up JDK 21
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: maven
+
+      # Build and test the project. The env block securely provides the Zello credentials
+      # from your repository's secrets to the Maven Surefire plugin.
+      - name: Build and Test with Maven
+        env:
+          ZELLO_SERVER_URL: ${{ secrets.ZELLO_SERVER_URL }}
+          ZELLO_USERNAME: ${{ secrets.ZELLO_USERNAME }}
+          ZELLO_PASSWORD: ${{ secrets.ZELLO_PASSWORD }}
+          ZELLO_CHANNEL: ${{ secrets.ZELLO_CHANNEL }}
+        run: mvn -B clean install --file pom.xml
